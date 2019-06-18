@@ -1,0 +1,42 @@
+#For Stackoverflow error reproduction
+FROM php:7.2-fpm-alpine
+
+ARG USERID=1000
+ARG GROUPID=1000
+
+ENV DOCKER_UID=${USERID} \
+    DOCKER_GID=${GROUPID} \
+    FPM_CONF_DIR="/usr/local/etc/php-fpm.d"
+
+RUN echo "Installing Development Dpendencies \n" &&\
+    echo http://dl-2.alpinelinux.org/alpine/edge/community/ >> /etc/apk/repositories &&\
+    apk add --update bash shadow git bash-completion bash-doc &&\
+    addgroup -g ${DOCKER_GID} developer &&\
+    mkdir -p /home/developer/code &&\
+    adduser -D -u ${DOCKER_UID} -G developer -h /home/developer -s /bin/bash developer &&\
+    chown developer:developer -R /home/developer/code &&\
+    chmod 755 /home/developer/code &&\
+    echo "[dev]" >> ${FPM_CONF_DIR}/dev.conf &&\
+    echo "listen = 0.0.0.0:9092" >> ${FPM_CONF_DIR}/dev.conf &&\
+    echo "user = developer" >> ${FPM_CONF_DIR}/dev.conf &&\
+    echo "group = developer" >> ${FPM_CONF_DIR}/dev.conf &&\
+    echo "pm = ondemand" >> ${FPM_CONF_DIR}/dev.conf &&\
+    echo "pm.max_children = 5" >> ${FPM_CONF_DIR}/dev.conf &&\
+    echo "pm.start_servers = 2" >> ${FPM_CONF_DIR}/dev.conf &&\
+    echo "pm.min_spare_servers = 1"  >> ${FPM_CONF_DIR}/dev.conf &&\
+    echo "pm.max_spare_servers = 3" >> ${FPM_CONF_DIR}/dev.conf &&\
+    rm -rf /var/cache/apk/*
+
+EXPOSE 9092
+
+COPY ./entrypoint/develop_entrypoint.sh /usr/local/bin/entrypoint.sh
+
+# I make seperate layer because Entrypoint is most likely to change
+RUN echo "Fixing Permissions on Entrypoint Script \n" &&\
+    chown root:root /usr/local/bin/entrypoint.sh &&\
+    chmod +x /usr/local/bin/entrypoint.sh
+
+VOLUME /home/developer/code
+WORKDIR /home/developer/code
+
+ENTRYPOINT /usr/local/bin/entrypoint.sh php-fpm
