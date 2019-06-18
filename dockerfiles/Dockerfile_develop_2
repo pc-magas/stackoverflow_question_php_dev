@@ -15,7 +15,8 @@ RUN echo "Installing Development Dpendencies \n" &&\
     mkdir -p /home/developer/code &&\
     adduser -D -u ${DOCKER_UID} -G developer -h /home/developer -s /bin/bash developer &&\
     chown developer:developer -R /home/developer/code &&\
-    chmod 755 /home/developer/code &&\
+    chmod 775 /home/developer/code &&\
+    chown -R developer /home/developer &&\
     sed -i 's/www-data/developer/gi' ${FPM_CONF_DIR}/www.conf &&\
     rm -rf /var/cache/apk/*
 
